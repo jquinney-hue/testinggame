@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Quest: The Quality Assurance Game</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Custom Animations & Base Styles */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        body {
+            background-color: #0f172a; /* slate-950 */
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons (Inline SVGs to replace Lucide) ---
+        const IconBase = ({ children, className = "w-6 h-6" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const Shield = (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconBase>;
+        const Bug = (props) => <IconBase {...props}><rect width="8" height="14" x="8" y="6" rx="4"/><path d="m19 7-3 2"/><path d="m5 7 3 2"/><path d="m19 19-3-2"/><path d="m5 19 3-2"/><path d="M20 13h-4"/><path d="M4 13h4"/><path d="m10 4 1 2"/><path d="m14 4-1 2"/></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></IconBase>;
+        const FileText = (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase>;
+        const Terminal = (props) => <IconBase {...props}><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></IconBase>;
+        const Play = (props) => <IconBase {...props}><polygon points="5 3 19 12 5 21 5 3"/></IconBase>;
+        const Award = (props) => <IconBase {...props}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></IconBase>;
+        const ArrowRight = (props) => <IconBase {...props}><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></IconBase>;
+        const Binary = (props) => <IconBase {...props}><rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/></IconBase>;
+        const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>;
+
+        // --- Constants & Content Data ---
+
+        const TOPICS = {
+            TESTING: 'TESTING_TYPES',
+            VALIDATION: 'VALIDATION_METHODS'
+        };
+
+        const MODES = {
+            MENU: 'MENU',
+            LEARN: 'LEARN',
+            PRACTICE: 'PRACTICE',
+            EXAM: 'EXAM',
+            REPORT: 'REPORT'
+        };
+
+        // Content for Testing Types
+        const TESTING_CONTENT = {
+            theory: [
+                {
+                    title: "Normal Data",
+                    desc: "Data that is within the expected range and of the correct type. The system should accept this without issues.",
+                    example: "For a strict age limit of 18-30: Entering '25' is Normal."
+                },
+                {
+                    title: "Boundary (Extreme) Data",
+                    desc: "Data at the very limits of acceptability. Used to check if the edges of the range are handled correctly.",
+                    example: "For a strict age limit of 18-30: Entering '18' or '30' is Boundary."
+                },
+                {
+                    title: "Erroneous Data",
+                    desc: "Data that should be rejected by the system. It falls outside limits or is the wrong type.",
+                    example: "For a strict age limit of 18-30: Entering '17', '31', or 'Unknown' is Erroneous."
+                }
+            ],
+            practice: [
+                {
+                    scenario: "System accepts passwords between 8 and 20 characters.",
+                    input: "password123 (11 chars)",
+                    answer: "Normal"
+                },
+                {
+                    scenario: "System accepts passwords between 8 and 20 characters.",
+                    input: "pass1234 (8 chars)",
+                    answer: "Boundary"
+                },
+                {
+                    scenario: "System accepts passwords between 8 and 20 characters.",
+                    input: "hi",
+                    answer: "Erroneous"
+                },
+                {
+                    scenario: "Grade input: 0 to 100.",
+                    input: "101",
+                    answer: "Erroneous"
+                },
+                {
+                    scenario: "Grade input: 0 to 100.",
+                    input: "0",
+                    answer: "Boundary"
+                }
+            ],
+            exam: [
+                {
+                    question: "A program accepts input for a month (1-12). Which of the following is Boundary data?",
+                    options: ["6", "0", "1", "13"],
+                    correct: 2 // index of '1'
+                },
+                {
+                    question: "Which type of test data is used to ensure the program handles unexpected inputs correctly?",
+                    options: ["Normal", "Erroneous", "Standard", "Typical"],
+                    correct: 1
+                },
+                {
+                    question: "If a loop runs for x = 1 to 10, what is the value '10' considered?",
+                    options: ["Erroneous", "Invalid", "Normal", "Boundary"],
+                    correct: 3
+                }
+            ]
+        };
+
+        // Content for Validation
+        const VALIDATION_CONTENT = {
+            theory: [
+                {
+                    title: "Range Check",
+                    desc: "Ensures data falls between a specific minimum and maximum value.",
+                    example: "Enter Month (1-12)."
+                },
+                {
+                    title: "Type Check",
+                    desc: "Ensures the data entered is of the correct data type (e.g., Integer, Boolean, String).",
+                    example: "Entering 'Five' into a currency field fails the Type check."
+                },
+                {
+                    title: "Presence Check",
+                    desc: "Ensures the field has not been left empty.",
+                    example: "Required fields in a form."
+                },
+                {
+                    title: "Format Check",
+                    desc: "Ensures data follows a specific pattern or template.",
+                    example: "Postcode (LLN NLL) or Email (text@text.com)."
+                }
+            ],
+            practice: [
+                {
+                    scenario: "User leaves the 'Surname' field blank.",
+                    answer: "Presence Check"
+                },
+                {
+                    scenario: "User enters 'Twenty' into the 'Age' field.",
+                    answer: "Type Check"
+                },
+                {
+                    scenario: "User enters age '150' for a high school student profile.",
+                    answer: "Range Check"
+                },
+                {
+                    scenario: "User enters date as 2023/12/25 instead of DD/MM/YYYY.",
+                    answer: "Format Check"
+                }
+            ],
+            exam: [
+                {
+                    question: "Which validation check would be best to ensure a user enters a valid email address structure?",
+                    options: ["Range Check", "Format Check", "Presence Check", "Length Check"],
+                    correct: 1
+                },
+                {
+                    question: "A required field in a database form is ensuring no null values are stored. What validation is this?",
+                    options: ["Presence Check", "Type Check", "Lookup Check", "Range Check"],
+                    correct: 0
+                },
+                {
+                    question: "Checking if a user's age is greater than 18 but less than 120 is an example of:",
+                    options: ["Format Check", "Type Check", "Range Check", "Presence Check"],
+                    correct: 2
+                }
+            ]
+        };
+
+        // --- Helper Components ---
+
+        const Button = ({ onClick, children, variant = 'primary', className = '', disabled = false }) => {
+            const baseStyles = "px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2";
+            const variants = {
+                primary: "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30",
+                secondary: "bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600",
+                success: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/30",
+                danger: "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/30",
+                outline: "bg-transparent border-2 border-slate-500 text-slate-300 hover:border-blue-400 hover:text-blue-400"
+            };
+
+            return (
+                <button 
+                    onClick={onClick} 
+                    disabled={disabled}
+                    className={`${baseStyles} ${variants[variant]} ${className} ${disabled ? 'opacity-50 cursor-not-allowed transform-none' : ''}`}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ children, className = '' }) => (
+            <div className={`bg-slate-800/80 backdrop-blur-md border border-slate-700 rounded-xl p-6 shadow-xl ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Badge = ({ children, color = 'blue' }) => {
+            const colors = {
+                blue: "bg-blue-900/50 text-blue-300 border-blue-700",
+                green: "bg-emerald-900/50 text-emerald-300 border-emerald-700",
+                purple: "bg-purple-900/50 text-purple-300 border-purple-700",
+                red: "bg-red-900/50 text-red-300 border-red-700"
+            };
+            return (
+                <span className={`px-3 py-1 rounded-full text-xs font-mono border ${colors[color] || colors.blue}`}>
+                    {children}
+                </span>
+            );
+        };
+
+        // --- Main Application Component ---
+
+        function App() {
+            const [gameState, setGameState] = useState({
+                mode: MODES.MENU,
+                activeTopic: null,
+                score: 0,
+                testingProgress: { completed: false, examScore: 0, maxScore: 0 },
+                validationProgress: { completed: false, examScore: 0, maxScore: 0 }
+            });
+
+            const [currentLevel, setCurrentLevel] = useState(0);
+            const [feedback, setFeedback] = useState(null); // 'correct' | 'incorrect' | null
+
+            // Reset helper
+            const returnToMenu = () => {
+                setGameState(prev => ({ ...prev, mode: MODES.MENU, activeTopic: null }));
+                setCurrentLevel(0);
+                setFeedback(null);
+            };
+
+            // --- Views ---
+
+            const renderMenu = () => (
+                <div className="flex flex-col items-center justify-center min-h-screen p-4 space-y-8 animate-fade-in">
+                    <div className="text-center space-y-4">
+                        <div className="inline-block p-4 rounded-full bg-blue-500/10 mb-4 border border-blue-500/30">
+                            <Shield className="w-16 h-16 text-blue-400" />
+                        </div>
+                        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                            QA QUEST
+                        </h1>
+                        <p className="text-slate-400 text-lg max-w-md mx-auto">
+                            System integrity compromised. Select a module to begin repairs.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
+                        <Card className="hover:border-blue-500 transition-colors group cursor-pointer h-full">
+                            <div className="flex flex-col h-full space-y-4">
+                                <div className="flex justify-between items-start">
+                                    <div className="p-3 bg-blue-900/30 rounded-lg text-blue-400 group-hover:text-blue-300">
+                                        <Binary className="w-8 h-8" />
+                                    </div>
+                                    {gameState.testingProgress.completed && <CheckCircle className="text-emerald-500 w-6 h-6" />}
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-100 mb-2">Testing Types</h2>
+                                    <p className="text-slate-400 text-sm">Master Normal, Boundary, and Erroneous data classification.</p>
+                                </div>
+                                <div className="pt-4 mt-auto">
+                                    <Button 
+                                        className="w-full"
+                                        onClick={() => setGameState(prev => ({ ...prev, mode: MODES.LEARN, activeTopic: TOPICS.TESTING }))}
+                                    >
+                                        Initialize Module <ArrowRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card className="hover:border-purple-500 transition-colors group cursor-pointer h-full">
+                            <div className="flex flex-col h-full space-y-4">
+                                <div className="flex justify-between items-start">
+                                    <div className="p-3 bg-purple-900/30 rounded-lg text-purple-400 group-hover:text-purple-300">
+                                        <Shield className="w-8 h-8" />
+                                    </div>
+                                    {gameState.validationProgress.completed && <CheckCircle className="text-emerald-500 w-6 h-6" />}
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-100 mb-2">Validation Methods</h2>
+                                    <p className="text-slate-400 text-sm">Implement Type, Range, Presence, and Format checks.</p>
+                                </div>
+                                <div className="pt-4 mt-auto">
+                                    <Button 
+                                        variant="primary"
+                                        className="w-full !bg-purple-600 hover:!bg-purple-500 shadow-purple-500/30"
+                                        onClick={() => setGameState(prev => ({ ...prev, mode: MODES.LEARN, activeTopic: TOPICS.VALIDATION }))}
+                                    >
+                                        Initialize Module <ArrowRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div className="w-full max-w-4xl pt-8 border-t border-slate-700 flex justify-center">
+                        <Button variant="outline" onClick={() => setGameState(prev => ({...prev, mode: MODES.REPORT}))}>
+                            <FileText className="w-4 h-4" /> Access Progress Report
+                        </Button>
+                    </div>
+                </div>
+            );
+
+            const renderLearnMode = () => {
+                const content = gameState.activeTopic === TOPICS.TESTING ? TESTING_CONTENT.theory : VALIDATION_CONTENT.theory;
+                const currentSlide = content[currentLevel];
+                const isLastSlide = currentLevel === content.length - 1;
+
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6 max-w-3xl mx-auto animate-fade-in">
+                        <div className="w-full flex justify-between items-center mb-8">
+                            <Badge color="blue">Training Mode</Badge>
+                            <div className="text-slate-400 text-sm">Module {currentLevel + 1} of {content.length}</div>
+                        </div>
+
+                        <Card className="w-full mb-8 min-h-[300px] flex flex-col justify-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                            <h2 className="text-3xl font-bold text-white mb-6">{currentSlide.title}</h2>
+                            <p className="text-slate-300 text-xl leading-relaxed mb-6">{currentSlide.desc}</p>
+                            <div className="bg-slate-900/50 p-4 rounded-lg border-l-4 border-emerald-500">
+                                <span className="text-emerald-400 font-mono text-sm block mb-1">EXAMPLE_DATA:</span>
+                                <p className="text-slate-200 font-mono">{currentSlide.example}</p>
+                            </div>
+                        </Card>
+
+                        <div className="flex gap-4 w-full">
+                            <Button variant="secondary" onClick={returnToMenu} className="flex-1">Abort</Button>
+                            <Button 
+                                className="flex-1"
+                                onClick={() => {
+                                    if (isLastSlide) {
+                                        setGameState(prev => ({ ...prev, mode: MODES.PRACTICE }));
+                                        setCurrentLevel(0);
+                                    } else {
+                                        setCurrentLevel(prev => prev + 1);
+                                    }
+                                }}
+                            >
+                                {isLastSlide ? "Start Simulation" : "Next Module"} <ArrowRight className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderPracticeMode = () => {
+                const content = gameState.activeTopic === TOPICS.TESTING ? TESTING_CONTENT.practice : VALIDATION_CONTENT.practice;
+                
+                if (currentLevel >= content.length) {
+                    setTimeout(() => {
+                        setGameState(prev => ({ ...prev, mode: MODES.EXAM }));
+                        setCurrentLevel(0);
+                        setFeedback(null);
+                    }, 100);
+                    return null;
+                }
+
+                const currentQ = content[currentLevel];
+                
+                const options = gameState.activeTopic === TOPICS.TESTING 
+                    ? ["Normal", "Boundary", "Erroneous"]
+                    : ["Range Check", "Type Check", "Presence Check", "Format Check"];
+
+                const handleAnswer = (selected) => {
+                    if (selected === currentQ.answer) {
+                        setFeedback('correct');
+                        setGameState(prev => ({ ...prev, score: prev.score + 10 })); // XP Gain
+                        setTimeout(() => {
+                            if (currentLevel + 1 < content.length) {
+                                setCurrentLevel(p => p + 1);
+                                setFeedback(null);
+                            } else {
+                                setGameState(prev => ({ ...prev, mode: MODES.EXAM }));
+                                setCurrentLevel(0);
+                                setFeedback(null);
+                            }
+                        }, 1000);
+                    } else {
+                        setFeedback('incorrect');
+                        setTimeout(() => setFeedback(null), 1000);
+                    }
+                };
+
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6 max-w-3xl mx-auto">
+                        <div className="w-full flex justify-between items-center mb-8">
+                            <Badge color="purple">Simulation Mode</Badge>
+                            <div className="text-slate-400 font-mono">XP: {gameState.score}</div>
+                        </div>
+
+                        <Card className={`w-full mb-8 border-2 transition-all ${
+                            feedback === 'correct' ? 'border-emerald-500 shadow-emerald-500/20' : 
+                            feedback === 'incorrect' ? 'border-red-500 shadow-red-500/20' : 'border-slate-700'
+                        }`}>
+                            <div className="flex items-center gap-3 mb-4 text-slate-400 border-b border-slate-700 pb-4">
+                                <Terminal className="w-5 h-5" />
+                                <span className="font-mono text-sm">INCOMING_DATA_STREAM</span>
+                            </div>
+                            
+                            <div className="mb-6">
+                                <h3 className="text-slate-400 text-sm uppercase tracking-wide mb-2">System Constraint</h3>
+                                <p className="text-xl text-white font-medium">{currentQ.scenario}</p>
+                            </div>
+
+                            <div className="bg-black/40 p-6 rounded-lg border border-slate-700 font-mono text-center">
+                                <span className="text-slate-500 block text-xs mb-2">DETECTED INPUT:</span>
+                                <span className="text-2xl text-blue-400">{currentQ.input || currentQ.scenario}</span>
+                            </div>
+                        </Card>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                            {options.map((opt) => (
+                                <button
+                                    key={opt}
+                                    onClick={() => handleAnswer(opt)}
+                                    className="p-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-left text-slate-200 font-semibold transition-all hover:translate-x-1 focus:ring-2 focus:ring-blue-500"
+                                >
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderExamMode = () => {
+                const content = gameState.activeTopic === TOPICS.TESTING ? TESTING_CONTENT.exam : VALIDATION_CONTENT.exam;
+                
+                if (currentLevel >= content.length) {
+                    return (
+                        <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center animate-fade-in">
+                            <div className="p-6 bg-emerald-500/20 rounded-full mb-6 border-2 border-emerald-500">
+                                <Award className="w-16 h-16 text-emerald-400" />
+                            </div>
+                            <h2 className="text-4xl font-bold text-white mb-4">Module Complete!</h2>
+                            <p className="text-slate-400 mb-8 max-w-md">
+                                You have successfully calibrated the system. Your performance data has been logged to the central server.
+                            </p>
+                            <Button onClick={returnToMenu}>Return to HQ</Button>
+                        </div>
+                    );
+                }
+
+                const currentQ = content[currentLevel];
+
+                const handleExamAnswer = (index) => {
+                    const isCorrect = index === currentQ.correct;
+                    const updateKey = gameState.activeTopic === TOPICS.TESTING ? 'testingProgress' : 'validationProgress';
+                    
+                    setGameState(prev => {
+                        const currentProgress = prev[updateKey];
+                        return {
+                            ...prev,
+                            [updateKey]: {
+                                completed: currentLevel === content.length - 1 ? true : currentProgress.completed,
+                                examScore: isCorrect ? currentProgress.examScore + 1 : currentProgress.examScore,
+                                maxScore: content.length
+                            }
+                        };
+                    });
+
+                    setCurrentLevel(p => p + 1);
+                };
+
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6 max-w-3xl mx-auto">
+                        <div className="w-full flex justify-between items-center mb-8">
+                            <Badge color="red">Certification Exam</Badge>
+                            <div className="text-slate-400 font-mono">Q: {currentLevel + 1} / {content.length}</div>
+                        </div>
+
+                        <Card className="w-full mb-8">
+                            <h3 className="text-xl font-bold text-white mb-6">{currentQ.question}</h3>
+                            <div className="space-y-3">
+                                {currentQ.options.map((opt, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handleExamAnswer(idx)}
+                                        className="w-full p-4 text-left bg-slate-900/50 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 transition-colors"
+                                    >
+                                        <span className="inline-block w-6 font-mono text-slate-500">{String.fromCharCode(65 + idx)}.</span> {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            const renderReportCard = () => {
+                const tScore = gameState.testingProgress.examScore;
+                const tMax = 3;
+                const vScore = gameState.validationProgress.examScore;
+                const vMax = 3; 
+
+                const tPerc = Math.round((tScore / tMax) * 100) || 0;
+                const vPerc = Math.round((vScore / vMax) * 100) || 0;
+                const totalPerc = Math.round(((tScore + vScore) / (tMax + vMax)) * 100) || 0;
+
+                let grade = 'F';
+                if (totalPerc >= 90) grade = 'A*';
+                else if (totalPerc >= 80) grade = 'A';
+                else if (totalPerc >= 70) grade = 'B';
+                else if (totalPerc >= 60) grade = 'C';
+                else if (totalPerc >= 50) grade = 'D';
+
+                const generateDownload = () => {
+                    const text = `
+------------------------------------------------
+      QA QUEST - ENGINEER PROGRESS REPORT
+------------------------------------------------
+Date: ${new Date().toLocaleDateString()}
+
+OVERALL PERFORMANCE
+-------------------
+Grade: ${grade}
+Total Score: ${totalPerc}%
+XP Earned: ${gameState.score}
+
+MODULE BREAKDOWN
+-------------------
+1. Testing Types
+   Status: ${gameState.testingProgress.completed ? 'COMPLETED' : 'INCOMPLETE'}
+   Exam Score: ${tScore}/${tMax} (${tPerc}%)
+   Topics Covered: Normal, Boundary, Erroneous Data
+
+2. Validation Methods
+   Status: ${gameState.validationProgress.completed ? 'COMPLETED' : 'INCOMPLETE'}
+   Exam Score: ${vScore}/${vMax} (${vPerc}%)
+   Topics Covered: Range, Type, Presence, Format Checks
+
+------------------------------------------------
+Certified by Automated QA System
+------------------------------------------------
+                    `.trim();
+
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'QA_Quest_Report.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6 animate-fade-in">
+                        <Card className="w-full max-w-2xl border-t-8 border-t-blue-500">
+                            <div className="text-center mb-8 border-b border-slate-700 pb-6">
+                                <h2 className="text-3xl font-bold text-white mb-2">Progress Report</h2>
+                                <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-400 my-4">
+                                    {grade}
+                                </div>
+                                <p className="text-slate-400">Total Efficiency: {totalPerc}%</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-8 mb-8">
+                                <div>
+                                    <h4 className="text-slate-400 text-sm uppercase tracking-wider mb-2">Testing Module</h4>
+                                    <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-500" style={{ width: `${tPerc}%` }}></div>
+                                    </div>
+                                    <div className="text-right text-sm mt-1 font-mono">{tScore}/{tMax}</div>
+                                </div>
+                                <div>
+                                    <h4 className="text-slate-400 text-sm uppercase tracking-wider mb-2">Validation Module</h4>
+                                    <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-purple-500" style={{ width: `${vPerc}%` }}></div>
+                                    </div>
+                                    <div className="text-right text-sm mt-1 font-mono">{vScore}/{vMax}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <Button onClick={generateDownload} variant="success">
+                                    <Download className="w-4 h-4" /> Download Report Card
+                                </Button>
+                                <Button onClick={returnToMenu} variant="secondary">
+                                    Close Report
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500/30">
+                    <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+                    <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-20"></div>
+
+                    <div className="relative z-10">
+                        {gameState.mode === MODES.MENU && renderMenu()}
+                        {gameState.mode === MODES.LEARN && renderLearnMode()}
+                        {gameState.mode === MODES.PRACTICE && renderPracticeMode()}
+                        {gameState.mode === MODES.EXAM && renderExamMode()}
+                        {gameState.mode === MODES.REPORT && renderReportCard()}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
